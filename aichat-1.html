@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simple AI Chat</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#11182a; --panel2:#17213a; --panel3:#1f2b44;
+    --border:#26324c; --text:#eef3ff; --muted:#9aa8c7; --muted2:#7383a2;
+    --accent:#5eead4; --accent2:#7c93ff; --danger:#ff6b6b; --warn:#f6c177;
+    --radius:18px; --shadow:0 16px 40px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:
+    radial-gradient(1200px 700px at 10% 0%, rgba(92,146,255,.15), transparent 55%),
+    radial-gradient(900px 600px at 100% 100%, rgba(94,234,212,.12), transparent 45%),
+    var(--bg); color:var(--text); display:flex; overflow:hidden;}
+  button,input,select,textarea{font:inherit}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(2px);z-index:30}
+  aside{width:340px;min-width:340px;background:linear-gradient(180deg,rgba(17,24,42,.98),rgba(12,16,32,.98));border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:40}
+  .top{padding:16px 16px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:12px;align-items:center}
+  .brand h1{margin:0;font-size:16px;font-weight:800}
+  .brand p{margin:4px 0 0;font-size:12px;color:var(--muted)}
+  .btn{border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);border-radius:12px;padding:10px 12px;cursor:pointer;transition:.15s}
+  .btn:hover{transform:translateY(-1px);border-color:rgba(94,234,212,.45)}
+  .body{padding:14px;overflow:auto;flex:1}
+  .card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+  .card h3{margin:0;font-size:13px}
+  .card .head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .card .content{padding:12px 14px 14px}
+  label{display:block;margin:0 0 5px;font-size:11px;color:var(--muted)}
+  input,textarea,select{width:100%;background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:11px 12px;outline:none}
+  textarea{min-height:88px;resize:vertical;line-height:1.45}
+  input:focus,textarea:focus,select:focus{border-color:rgba(94,234,212,.6);box-shadow:0 0 0 3px rgba(94,234,212,.12)}
+  .row{display:grid;gap:10px;margin-bottom:10px}.two{grid-template-columns:1fr 1fr}
+  .pillrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--muted);border-radius:999px;padding:7px 10px;font-size:11px;cursor:pointer}
+  .pill.active,.pill:hover{color:var(--text);border-color:rgba(94,234,212,.45);background:rgba(94,234,212,.08)}
+  .hint{margin-top:6px;font-size:11px;color:var(--muted2);line-height:1.45}
+  .keys{display:grid;gap:8px;margin-bottom:10px}
+  .key{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:8px 10px}
+  .key .n{font-size:11px;font-weight:700;color:#081021;background:var(--accent);border-radius:999px;padding:3px 8px;flex:0 0 auto}
+  .key .m{flex:1;min-width:0;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .mini{border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);border-radius:10px;padding:8px 10px;cursor:pointer}
+  .mini:hover{border-color:rgba(94,234,212,.45)}
+  .mini.danger:hover{border-color:rgba(255,107,107,.6);color:var(--danger)}
+  .inline{display:grid;grid-template-columns:1fr auto;gap:8px}
+  .toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;color:var(--muted);font-size:12px}
+  .switch{position:relative;width:44px;height:24px;flex:0 0 auto}.switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;border-radius:999px;background:#24314b;border:1px solid var(--border);transition:.15s}
+  .slider:before{content:"";position:absolute;width:18px;height:18px;top:2px;left:2px;border-radius:50%;background:#c7d2fe;transition:.15s}
+  .switch input:checked + .slider{background:rgba(94,234,212,.25);border-color:rgba(94,234,212,.45)}
+  .switch input:checked + .slider:before{transform:translateX(20px);background:var(--accent)}
+  .save{width:100%;border:none;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#081021;font-weight:800;padding:12px 14px;cursor:pointer}
+  .status{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-top:10px;padding:0 4px}.dot{width:10px;height:10px;border-radius:50%;background:#64748b}.dot.ok{background:var(--accent)}.dot.warn{background:var(--warn)}.dot.err{background:var(--danger)}
+  .curl{width:100%;min-height:170px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre;line-height:1.5;font-size:12px}
+  main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+  .topbar{height:58px;border-bottom:1px solid var(--border);background:rgba(13,18,34,.72);backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:space-between;padding:0 16px;gap:12px}
+  .left,.right{display:flex;align-items:center;gap:10px;min-width:0}
+  .menu{display:none;width:40px;height:40px;padding:0;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);border-radius:12px}
+  .title{margin:0;font-size:14px;font-weight:800}.subtitle{margin:2px 0 0;font-size:11px;color:var(--muted)}
+  .tag{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--muted);border-radius:999px;padding:8px 10px;font-size:11px;white-space:nowrap}.tag strong{color:var(--text)}
+  .chat{flex:1;overflow:auto;padding:18px 0 10px;scroll-behavior:smooth}.msgs{max-width:920px;margin:0 auto;padding:0 14px}
+  .empty{min-height:calc(100vh - 180px);display:grid;place-items:center;text-align:center;color:var(--muted);padding:30px 12px}.empty .box{max-width:520px;border:1px solid var(--border);background:rgba(255,255,255,.03);box-shadow:var(--shadow);border-radius:24px;padding:28px}.empty h2{margin:0 0 8px;color:var(--text);font-size:22px}.empty p{margin:0;line-height:1.6;font-size:14px}
+  .msg{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}.msg.user{flex-direction:row-reverse}.ava{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;font-size:12px;font-weight:800;flex:0 0 auto;border:1px solid var(--border);background:rgba(255,255,255,.04)}
+  .msg.user .ava{background:rgba(94,234,212,.14);border-color:rgba(94,234,212,.25);color:var(--accent)}.msg.assistant .ava{background:rgba(124,147,255,.12);border-color:rgba(124,147,255,.25);color:#c7d2fe}.msg.error .ava{background:rgba(255,107,107,.12);border-color:rgba(255,107,107,.25);color:var(--danger)}
+  .bubble{min-width:0;max-width:min(100%,760px);border:1px solid var(--border);border-radius:22px;background:rgba(255,255,255,.03);overflow:hidden}.msg.user .bubble{background:rgba(94,234,212,.06);border-color:rgba(94,234,212,.18)}
+  .bhead{display:flex;justify-content:space-between;gap:12px;padding:10px 14px 0;font-size:11px;color:var(--muted)}.bbody{padding:10px 14px 14px;line-height:1.7;font-size:14px;overflow-wrap:anywhere}.bbody p{margin:0 0 10px}.bbody p:last-child{margin-bottom:0}.bbody h1,.bbody h2,.bbody h3,.bbody h4{margin:14px 0 8px;line-height:1.3}.bbody h1{font-size:20px}.bbody h2{font-size:18px}.bbody h3{font-size:16px}.bbody h4{font-size:15px}.bbody ul,.bbody ol{margin:0 0 10px 20px;padding:0}.bbody li{margin:4px 0}.bbody blockquote{margin:10px 0;padding:2px 0 2px 12px;border-left:3px solid rgba(94,234,212,.45);color:var(--muted)}.bbody code:not(pre code){padding:1px 6px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid var(--border);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95em}.bbody pre{margin:10px 0 0;padding:14px;overflow:auto;background:#08101d;border-radius:16px;border:1px solid rgba(255,255,255,.08)}.bbody pre code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.55;color:#d7e0ff}.bbody a{color:var(--accent);text-decoration:underline}.bbody table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px}.bbody th,.bbody td{border:1px solid var(--border);padding:8px 10px;text-align:left}.bbody th{background:rgba(255,255,255,.05)}
+  .composer{border-top:1px solid var(--border);background:rgba(13,18,34,.82);backdrop-filter:blur(14px);padding:12px 14px 16px}.composer-inner{max-width:920px;margin:0 auto;border:1px solid var(--border);border-radius:22px;overflow:hidden;background:rgba(255,255,255,.03);box-shadow:var(--shadow)}
+  .composer textarea{border:none;border-radius:0;min-height:62px;max-height:240px;resize:none;padding:14px 14px 10px;background:transparent}
+  .actions{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px 10px 14px;border-top:1px solid var(--border)}.left2{display:flex;flex-wrap:wrap;gap:10px;align-items:center;color:var(--muted);font-size:11px;min-width:0}.right2{display:flex;gap:8px;flex:0 0 auto}
+  .send{border:none;border-radius:14px;padding:12px 16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#09111f;font-weight:800;cursor:pointer;transition:.16s ease;min-width:110px}.send:hover{transform:translateY(-1px)}.send.stop{background:linear-gradient(135deg,var(--danger),#ff8a8a);color:white}
+  .note{max-width:920px;margin:8px auto 0;color:var(--muted2);font-size:11px;line-height:1.5;padding:0 4px}.note code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:6px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(10px);background:rgba(17,24,42,.98);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:12px;font-size:12px;opacity:0;pointer-events:none;transition:.18s ease;z-index:60;box-shadow:var(--shadow);max-width:min(92vw,760px);white-space:pre-wrap}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .warnbar{margin:0 14px 10px;padding:10px 12px;border-radius:14px;border:1px solid rgba(246,193,119,.35);background:rgba(246,193,119,.08);color:#ffdca3;font-size:12px;line-height:1.45}
+  @media (max-width:980px){aside{position:fixed;top:0;bottom:0;left:0;transform:translateX(-100%);transition:transform .18s ease}aside.open{transform:translateX(0)}.overlay.show{display:block}.menu{display:inline-grid;place-items:center}}
+  @media (max-width:640px){aside{width:92vw;min-width:92vw}.two{grid-template-columns:1fr}.topbar{padding:0 12px}.tag{display:none}.send{min-width:88px}.msgs{padding:0 10px}.composer{padding:10px}.bubble{border-radius:18px}}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay"></div>
+<aside id="sidebar">
+  <div class="top">
+    <div class="brand"><h1>⚡ Simple AI Chat</h1><p>Markdown, code blocks, multi-key, curl preview</p></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" id="testBtn">Test</button>
+      <button class="btn" id="closeBtn">✕</button>
+    </div>
+  </div>
+  <div class="body">
+    <div class="card">
+      <div class="head"><h3>Connection</h3><span class="badge" id="connBadge" style="font-size:11px;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);padding:4px 8px;border-radius:999px;">Not configured</span></div>
+      <div class="content">
+        <div class="row"><div><label for="preset">Preset</label><select id="preset"><option value="freemodel">Freemodel</option><option value="openai">OpenAI compatible</option><option value="custom">Custom</option></select></div></div>
+        <div class="row"><div><label for="baseUrl">Base URL</label><input id="baseUrl" placeholder="https://api.freemodel.dev" /></div></div>
+        <div class="row two"><div><label for="endpoint">Endpoint</label><input id="endpoint" placeholder="/v1/responses" /></div><div><label for="apiFormat">API format</label><select id="apiFormat"><option value="responses">Responses API</option><option value="chat">Chat Completions</option></select></div></div>
+        <div class="row two"><div><label for="authHeader">Auth header</label><select id="authHeader"><option value="Authorization">Authorization: Bearer</option><option value="x-api-key">x-api-key</option><option value="api-key">api-key</option></select></div><div><label for="model">Model</label><input id="model" list="models" placeholder="gpt-5.5" /><datalist id="models"><option value="gpt-5.5"></option><option value="gpt-5"></option><option value="gpt-4.1"></option><option value="gpt-4o"></option><option value="gpt-4o-mini"></option><option value="o3"></option><option value="o4-mini"></option></datalist></div></div>
+        <div class="pillrow"><button class="pill" data-preset="freemodel">Freemodel</button><button class="pill" data-preset="openai">OpenAI</button><button class="pill" data-preset="custom">Custom</button></div>
+        <div class="hint">Freemodel often pairs with <code>/v1/responses</code>. Change only what your API actually needs.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="head"><h3>API Keys</h3><span id="keyCount" class="badge" style="font-size:11px;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);padding:4px 8px;border-radius:999px;">0 keys</span></div>
+      <div class="content">
+        <div class="keys" id="keys"></div>
+        <div class="inline"><input id="newKey" type="password" placeholder="Paste API key" /><button class="mini" id="addKey">Add</button></div>
+        <div class="hint">Multiple keys are supported. The app rotates them and can retry the next key on auth/rate-limit failures.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="head"><h3>Prompt & Options</h3><span class="badge" style="font-size:11px;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);padding:4px 8px;border-radius:999px;">Saved locally</span></div>
+      <div class="content">
+        <div class="row"><div><label for="systemPrompt">System prompt</label><textarea id="systemPrompt" placeholder="You are a helpful assistant."></textarea></div></div>
+        <div class="row two"><div><label for="temperature">Temperature</label><input id="temperature" type="number" min="0" max="2" step="0.1" value="0.7" /></div><div><label for="maxTokens">Max output tokens</label><input id="maxTokens" type="number" min="1" max="128000" step="1" value="2048" /></div></div>
+        <div class="toggle"><span>Streaming</span><label class="switch"><input id="streamToggle" type="checkbox" checked><span class="slider"></span></label></div>
+        <div class="toggle"><span>Send history</span><label class="switch"><input id="historyToggle" type="checkbox" checked><span class="slider"></span></label></div>
+        <div class="toggle"><span>Retry next key</span><label class="switch"><input id="retryToggle" type="checkbox" checked><span class="slider"></span></label></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="head"><h3>cURL preview</h3><button class="mini" id="copyCurl">Copy</button></div>
+      <div class="content"><textarea id="curlBox" class="curl" readonly></textarea><div class="hint">Use this in terminal to test outside the browser.</div></div>
+    </div>
+
+    <button class="save" id="saveBtn">Save settings</button>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Ready when configured</span></div>
+  </div>
+</aside>
+
+<main>
+  <div class="topbar">
+    <div class="left"><button class="menu" id="menuBtn">☰</button><div><p class="title">Simple AI Chat</p><p class="subtitle" id="subtitle">Markdown, code blocks, multiple keys, direct API testing</p></div></div>
+    <div class="right"><div class="tag">Model: <strong id="topModel">—</strong></div><div class="tag">Format: <strong id="topFormat">—</strong></div><button class="btn" id="clearBtn">Clear</button></div>
+  </div>
+  <div class="chat" id="chat"><div class="msgs" id="msgs"><div class="empty" id="emptyState"><div class="box"><h2>AI chat ready ✨</h2><p>Set your API details, add one or more keys, then chat. Markdown, code fences, tables, quotes, and links are rendered.</p></div></div></div></div>
+  <div class="composer">
+    <div class="composer-inner">
+      <textarea id="input" placeholder="Type a message… Enter to send, Shift+Enter for newline"></textarea>
+      <div class="actions"><div class="left2"><span id="charCount">0 chars</span><span>•</span><span id="liveHint">No request yet</span></div><div class="right2"><button class="mini" id="stopBtn" style="display:none;">Stop</button><button class="send" id="sendBtn">Send</button></div></div>
+    </div>
+    <div class="note" id="fileNote">If this page is opened as <code>file://</code>, cross-origin fetches can fail. A local server usually avoids the “Network error” issue.</div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+<script>
+const $ = id => document.getElementById(id);
+const state = { keys: [], keyIndex: 0, messages: [], active: null, sending:false };
+const defaults = {
+  freemodel: { baseUrl:'https://api.freemodel.dev', endpoint:'/v1/responses', apiFormat:'responses', authHeader:'Authorization', model:'gpt-5.5' },
+  openai: { baseUrl:'https://api.openai.com', endpoint:'/v1/responses', apiFormat:'responses', authHeader:'Authorization', model:'gpt-5.1' },
+  custom: { baseUrl:'', endpoint:'/v1/responses', apiFormat:'responses', authHeader:'Authorization', model:'' }
+};
+const saveKey = 'simple_ai_chat_state_v1';
+
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function toast(msg, ms=2200){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),ms)}
+function current(){return {
+  preset:$('preset').value,
+  baseUrl:$('baseUrl').value.trim().replace(/\/+$/,''),
+  endpoint:($('endpoint').value.trim()||'/v1/responses').startsWith('/') ? $('endpoint').value.trim()||'/v1/responses' : '/'+$('endpoint').value.trim(),
+  apiFormat:$('apiFormat').value,
+  authHeader:$('authHeader').value,
+  model:$('model').value.trim(),
+  systemPrompt:$('systemPrompt').value,
+  temperature:Number($('temperature').value||0.7),
+  maxTokens:Number($('maxTokens').value||2048),
+  stream:$('streamToggle').checked,
+  history:$('historyToggle').checked,
+  retry:$('retryToggle').checked,
+}};
+function applyPreset(name){const p=defaults[name]||defaults.custom;$('preset').value=name;$('baseUrl').value=p.baseUrl;$('endpoint').value=p.endpoint;$('apiFormat').value=p.apiFormat;$('authHeader').value=p.authHeader;$('model').value=p.model;updatePills(name);updateUI();updateCurl();}
+function updatePills(active){document.querySelectorAll('.pill[data-preset]').forEach(x=>x.classList.toggle('active',x.dataset.preset===active))}
+function load(){const raw=localStorage.getItem(saveKey);if(!raw){applyPreset('freemodel');return} const d=JSON.parse(raw); state.keys=Array.isArray(d.keys)?d.keys:[]; state.keyIndex=Number.isInteger(d.keyIndex)?d.keyIndex:0; state.messages=Array.isArray(d.messages)?d.messages:[]; if(d.settings){$('preset').value=d.settings.preset||'freemodel';['baseUrl','endpoint','apiFormat','authHeader','model','systemPrompt','temperature','maxTokens'].forEach(id=>{if(d.settings[id]!==undefined)$(id).value=d.settings[id]});$('streamToggle').checked=!!d.settings.stream;$('historyToggle').checked=!!d.settings.history;$('retryToggle').checked=!!d.settings.retry; updatePills($('preset').value);} else applyPreset('freemodel'); renderKeys(); renderMessages(); updateUI(); updateCurl(); }
+function save(){localStorage.setItem(saveKey,JSON.stringify({keys:state.keys,keyIndex:state.keyIndex,settings:current(),messages:state.messages.slice(-200)}))}
+function mask(k){return k.length<=10?'•'.repeat(k.length):k.slice(0,6)+'••••'+k.slice(-4)}
+function renderKeys(){const box=$('keys');box.innerHTML='';$('keyCount').textContent=`${state.keys.length} key${state.keys.length===1?'':'s'}`; if(!state.keys.length){box.innerHTML='<div class="hint">No keys added yet.</div>'; return;} state.keys.forEach((k,i)=>{const row=document.createElement('div');row.className='key';row.innerHTML=`<div class="n">#${i+1}</div><div class="m">${esc(mask(k))}</div><button class="mini danger" data-del="${i}">✕</button>`; box.appendChild(row)});}
+function addKey(){const v=$('newKey').value.trim(); if(!v) return; if(state.keys.includes(v)){toast('Key already added'); return;} state.keys.push(v); $('newKey').value=''; renderKeys(); updateUI(); updateCurl(); save();}
+function delKey(i){state.keys.splice(i,1); if(state.keyIndex>=state.keys.length) state.keyIndex=0; renderKeys(); updateUI(); updateCurl(); save();}
+function nextKey(){if(!state.keys.length) return null; const k=state.keys[state.keyIndex%state.keys.length]; state.keyIndex=(state.keyIndex+1)%state.keys.length; return k;}
+function updateUI(){const s=current(); $('topModel').textContent=s.model||'—'; $('topFormat').textContent=s.apiFormat==='responses'?'Responses':'Chat'; $('connBadge').textContent=(s.baseUrl && s.model)?`${s.apiFormat} • ${s.model}`:'Not configured'; $('subtitle').textContent=s.baseUrl?`${s.apiFormat} • ${s.baseUrl}${s.endpoint}`:'Markdown, code blocks, multiple keys, direct API testing'; $('charCount').textContent=`${$('input').value.length} chars`; updateStatus();}
+function updateStatus(kind=null,msg=null){const dot=$('dot'),txt=$('statusText');dot.className='dot'; if(kind==='ok') dot.classList.add('ok'); if(kind==='warn') dot.classList.add('warn'); if(kind==='err') dot.classList.add('err'); if(msg){txt.textContent=msg; return} if(!state.keys.length){txt.textContent='Add at least one API key'; dot.classList.add('warn')} else if(!current().baseUrl || !current().model){txt.textContent='Fill base URL and model'; dot.classList.add('warn')} else {txt.textContent='Ready'; dot.classList.add('ok')}}
+function updateCurl(){const s=current(); const key=state.keys[0]||'YOUR_API_KEY'; const headers=s.authHeader==='Authorization' ? `-H "Authorization: Bearer ${key}"` : `-H "${s.authHeader}: ${key}"`; const body=s.apiFormat==='chat' ? {model:s.model||'YOUR_MODEL',messages:[{role:'system',content:'You are a helpful assistant.'},{role:'user',content:'Say hello in one line.'}],temperature:s.temperature,max_tokens:s.maxTokens} : {model:s.model||'YOUR_MODEL',input:'Say hello in one line.',temperature:s.temperature,max_output_tokens:s.maxTokens}; const curl=`curl -sS "${s.baseUrl}${s.endpoint}" \\
+  -H "Content-Type: application/json" \\
+  ${headers} \\
+  -d '${JSON.stringify(body,null,2).replace(/'/g,"'\\''")}'`; $('curlBox').value=curl; }
+function html(md){md=String(md??'').replace(/\r\n/g,'\n'); const blocks=[]; md=md.replace(/```(\w+)?\n([\s\S]*?)```/g,(_,lang,code)=>{blocks.push({lang:lang||'',code}); return `@@CODE${blocks.length-1}@@`;}); md=md.replace(/^>\s?(.*)$/gm,'<blockquote>$1</blockquote>'); md=md.replace(/^#{1,6}\s+(.+)$/gm,(m,t)=>`<h${(m.match(/^#+/)[0]||'#').length}>${t}</h${(m.match(/^#+/)[0]||'#').length}>`); md=md.replace(/^\s*[-*+]\s+(.+)$/gm,'<li>$1</li>'); md=md.replace(/^\s*\d+\.\s+(.+)$/gm,'<li>$1</li>'); md=md.replace(/(<li>[\s\S]*?<\/li>)/g,m=>{const items=m.match(/<li>[\s\S]*?<\/li>/g)||[]; if(!items.length) return m; const ordered=/^\s*\d+\./m.test(m); return `<${ordered?'ol':'ul'}>${items.join('')}</${ordered?'ol':'ul'}>`}); md=md.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/__(.+?)__/g,'<strong>$1</strong>').replace(/\*(.+?)\*/g,'<em>$1</em>').replace(/_(.+?)_/g,'<em>$1</em>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noreferrer noopener">$1</a>').replace(/\n{2,}/g,'\n\n'); let out=md.split('\n\n').map(b=>{b=b.trim(); if(!b) return ''; if(/^<(h\d|ul|ol|blockquote|pre|li)/.test(b) || /^@@CODE\d+@@$/.test(b)) return b; return `<p>${b.replace(/\n/g,'<br>')}</p>`}).join(''); return out.replace(/@@CODE(\d+)@@/g,(_,i)=>{const x=blocks[Number(i)]; return `<pre><code class="language-${esc(x.lang||'code')}">${esc(x.code||'')}</code></pre>`})}
+function addMsg(role,text,meta=''){const wrap=document.createElement('div'); wrap.className=`msg ${role}`; wrap.innerHTML=`<div class="ava">${role==='user'?'You':role==='error'?'!':'AI'}</div><div class="bubble"><div class="bhead"><span>${role==='user'?'You':role==='error'?'Error':'Assistant'}</span><span>${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span></div><div class="bbody">${role==='user'?`<p>${esc(text).replace(/\n/g,'<br>')}</p>`:html(text)}</div>${meta?`<div class="bhead"><span></span><span style="font-size:11px;color:var(--muted2)">${esc(meta)}</span></div>`:''}</div>`; $('msgs').appendChild(wrap); $('chat').scrollTop=$('chat').scrollHeight; return wrap; }
+function renderMessages(){const msgs=$('msgs'); const empty=$('emptyState'); if(empty) empty.remove(); if(!state.messages.length){msgs.innerHTML='<div class="empty" id="emptyState"><div class="box"><h2>AI chat ready ✨</h2><p>Set your API details, add one or more keys, then chat. Markdown, code fences, tables, quotes, and links are rendered.</p></div></div>'; return;} msgs.innerHTML=''; state.messages.forEach(m=>addMsg(m.role,m.content)); }
+function sseParse(line){const t=line.trim(); if(!t.startsWith('data:')) return null; const d=t.slice(5).trim(); if(!d || d==='[DONE]') return {done:true}; try{return JSON.parse(d)}catch{return null}}
+function extractChat(d){return d?.choices?.[0]?.message?.content ?? d?.choices?.[0]?.delta?.content ?? d?.message?.content ?? ''}
+function extractResp(d){if(!d) return ''; if(typeof d.output_text==='string') return d.output_text; if(typeof d.text==='string') return d.text; if(Array.isArray(d.output)){const p=[]; for(const i of d.output){if(Array.isArray(i?.content)) for(const c of i.content) if(typeof c?.text==='string') p.push(c.text); if(typeof i?.text==='string') p.push(i.text)} return p.join('')} return ''}
+function buildReq(prompt,stream=false){
+  const s = current();
+  const hist = [];
+  if (s.systemPrompt.trim()) hist.push({ role:'system', content:s.systemPrompt.trim() });
+  if (s.history) hist.push(...state.messages);
+  else hist.push({ role:'user', content:prompt });
+
+  if (s.apiFormat === 'chat') {
+    return {
+      url: `${s.baseUrl}${s.endpoint}`,
+      body: { model:s.model, messages:hist, temperature:s.temperature, max_tokens:s.maxTokens, stream }
+    };
+  }
+
+  const input = s.history
+    ? hist.map(m => {
+        if (m.role === 'system') return { role:'system', content:[{ type:'input_text', text:m.content }] };
+        if (m.role === 'assistant') return { role:'assistant', content:[{ type:'output_text', text:m.content }] };
+        return { role:'user', content:[{ type:'input_text', text:m.content }] };
+      })
+    : prompt;
+
+  return {
+    url: `${s.baseUrl}${s.endpoint}`,
+    body: { model:s.model, input, temperature:s.temperature, max_output_tokens:s.maxTokens, stream }
+  };
+}
+function hdrs(key){if(current().authHeader==='Authorization') return {'Content-Type':'application/json','Authorization':`Bearer ${key}`}; return {'Content-Type':'application/json',[current().authHeader]:key}}
+function failureHint(msg){if(location.protocol==='file:') return 'This page is running from file://. Open it through a local server, then retry. Example: python3 -m http.server 8000'; if(/cors|cross-origin|failed to fetch|networkerror/i.test(String(msg))) return 'Possible CORS block or network issue. The API must allow browser requests from this origin.'; return 'Check the request URL and API settings.'}
+function setSending(on){state.sending=on; $('sendBtn').textContent=on?'Sending…':'Send'; $('sendBtn').classList.toggle('stop',on); $('stopBtn').style.display=on?'inline-block':'none'; ['input','preset','baseUrl','endpoint','apiFormat','authHeader','model','systemPrompt','temperature','maxTokens','streamToggle','historyToggle','retryToggle'].forEach(id=>$(id).disabled=on)}
+async function doRequest(prompt, test=false){const s=current(); if(!s.baseUrl||!s.model) throw new Error('Fill base URL and model'); if(!state.keys.length) throw new Error('Add an API key first'); const req=buildReq(prompt,s.stream); const tries=Math.max(1,state.keys.length); let last=null; let assistantText=''; let bubble=null; let bodyEl=null; for(let a=0;a<tries;a++){const key=nextKey(); try{const res=await fetch(req.url,{method:'POST',headers:hdrs(key),body:JSON.stringify(req.body),signal:state.active?.signal}); if(!res.ok){let info=''; try{const j=await res.json(); info=j?.error?.message||j?.message||JSON.stringify(j)}catch{info=await res.text().catch(()=> '')} const msg=`HTTP ${res.status} ${res.statusText}${info?`\n${info}`:''}`; if(s.retry && state.keys.length>1 && [401,403,429].includes(res.status)){last=new Error(msg); continue} throw new Error(msg)} if(s.stream){const reader=res.body.getReader(); const dec=new TextDecoder(); let buf=''; assistantText=''; bubble = addMsg('assistant','Thinking…', test?'Connection test':'' ); bodyEl=bubble.querySelector('.bbody'); bodyEl.innerHTML='<em>Streaming…</em>'; while(true){const {done,value}=await reader.read(); if(done) break; buf += dec.decode(value,{stream:true}); const lines=buf.split('\n'); buf=lines.pop()||''; for(const line of lines){const p=sseParse(line); if(!p || p.done) continue; let delta=''; if(s.apiFormat==='chat') delta=p?.choices?.[0]?.delta?.content||''; else delta=p?.response?.output_text?.delta||p?.output_text?.delta||p?.delta||''; if(delta){assistantText += delta; bodyEl.innerHTML=html(assistantText); $('chat').scrollTop=$('chat').scrollHeight;}}} if(!assistantText){const j=await res.json().catch(()=>null); assistantText=s.apiFormat==='chat'?extractChat(j):extractResp(j); bodyEl.innerHTML=html(assistantText||'(empty response)')} } else {const j=await res.json(); assistantText=s.apiFormat==='chat'?extractChat(j):extractResp(j); bubble=addMsg('assistant', assistantText||'(empty response)', test?'Connection test':''); } return assistantText } catch(err){ last=err; if(s.retry && state.keys.length>1 && /network|fetch|cors|failed to fetch|typeerror/i.test(String(err))) continue; throw err } } throw last || new Error('Request failed') }
+async function send(test=false){const text=test?'Reply with exactly: pong':$('input').value.trim(); if(!text) return; if(!test){state.messages.push({role:'user',content:text}); addMsg('user',text)} else addMsg('user',text,'Connection test'); $('input').value=''; autoResize(); updateCurl(); save(); setSending(true); state.active=new AbortController(); try{const out=await doRequest(text,test); if(!test) state.messages.push({role:'assistant',content:out||''}); $('liveHint').textContent='Request completed'; updateStatus('ok','Request completed'); if(test) toast('Connection OK')}catch(err){addMsg('error',`Error: ${err.message}`, failureHint(err.message)); $('liveHint').textContent='Request failed'; updateStatus('err','Request failed'); toast('Request failed')}finally{state.active=null; setSending(false); save(); $('chat').scrollTop=$('chat').scrollHeight}}
+function autoResize(){const t=$('input'); t.style.height='auto'; t.style.height=Math.min(t.scrollHeight,240)+'px'; $('charCount').textContent=`${t.value.length} chars`}
+function clearChat(){if(!confirm('Clear current chat?')) return; state.messages=[]; renderMessages(); save();}
+function stop(){if(state.active){state.active.abort(); state.active=null; setSending(false); $('liveHint').textContent='Stopped'; updateStatus('warn','Stopped'); toast('Stopped')}}
+function save(){localStorage.setItem(saveKey,JSON.stringify({keys:state.keys,keyIndex:state.keyIndex,settings:current(),messages:state.messages.slice(-200)}))}
+function copyCurl(){navigator.clipboard.writeText($('curlBox').value).then(()=>toast('cURL copied')).catch(()=>toast('Copy failed'))}
+function bind(){ $('menuBtn').addEventListener('click',()=>{$('sidebar').classList.add('open'); $('overlay').classList.add('show')}); $('closeBtn').addEventListener('click',()=>{$('sidebar').classList.remove('open');$('overlay').classList.remove('show')}); $('overlay').addEventListener('click',()=>{$('sidebar').classList.remove('open');$('overlay').classList.remove('show')}); $('preset').addEventListener('change',()=>{applyPreset($('preset').value); save()}); document.querySelectorAll('.pill[data-preset]').forEach(b=>b.addEventListener('click',()=>{applyPreset(b.dataset.preset); save(); toast(`${b.dataset.preset} preset loaded`)})); ['baseUrl','endpoint','apiFormat','authHeader','model','systemPrompt','temperature','maxTokens','streamToggle','historyToggle','retryToggle'].forEach(id=>{$(id).addEventListener('input',()=>{updateUI(); updateCurl(); save()}); $(id).addEventListener('change',()=>{updateUI(); updateCurl(); save()})}); $('addKey').addEventListener('click',addKey); $('newKey').addEventListener('keydown',e=>{if(e.key==='Enter') addKey()}); $('keys').addEventListener('click',e=>{const b=e.target.closest('[data-del]'); if(b) delKey(Number(b.dataset.del))}); $('saveBtn').addEventListener('click',()=>{save(); toast('Settings saved')}); $('copyCurl').addEventListener('click',copyCurl); $('sendBtn').addEventListener('click',()=>state.sending?stop():send(false)); $('stopBtn').addEventListener('click',stop); $('clearBtn').addEventListener('click',clearChat); $('testBtn').addEventListener('click',()=>send(true)); $('input').addEventListener('input',()=>{autoResize(); updateUI()}); $('input').addEventListener('keydown',e=>{if(e.key==='Enter' && !e.shiftKey){e.preventDefault(); if(!state.sending) send(false)}}); window.addEventListener('resize',()=>{if(window.innerWidth>980) $('sidebar').classList.remove('open'),$('overlay').classList.remove('show')}); }
+function updateCurl(){const s=current(); const key=state.keys[0]||'YOUR_API_KEY'; const head=s.authHeader==='Authorization'?`-H "Authorization: Bearer ${key}"`:`-H "${s.authHeader}: ${key}"`; const body=s.apiFormat==='chat'?{model:s.model||'YOUR_MODEL',messages:[{role:'system',content:'You are a helpful assistant.'},{role:'user',content:'Say hello in one line.'}],temperature:s.temperature,max_tokens:s.maxTokens}:{model:s.model||'YOUR_MODEL',input:'Say hello in one line.',temperature:s.temperature,max_output_tokens:s.maxTokens}; $('curlBox').value=`curl -sS "${s.baseUrl}${s.endpoint}" \\
+  -H "Content-Type: application/json" \\
+  ${head} \\
+  -d '${JSON.stringify(body,null,2).replace(/'/g,"'\\''")}'`; }
+function updateStatus(kind=null,msg=null){const d=$('dot'),t=$('statusText'); d.className='dot'; if(kind==='ok') d.classList.add('ok'); if(kind==='warn') d.classList.add('warn'); if(kind==='err') d.classList.add('err'); if(msg){t.textContent=msg; return} if(!state.keys.length){t.textContent='Add at least one API key'; d.classList.add('warn')} else if(!current().baseUrl || !current().model){t.textContent='Fill base URL and model'; d.classList.add('warn')} else {t.textContent='Ready'; d.classList.add('ok')}}
+function updateUI(){const s=current(); $('topModel').textContent=s.model||'—'; $('topFormat').textContent=s.apiFormat==='responses'?'Responses':'Chat'; $('connBadge').textContent=(s.baseUrl && s.model)?`${s.apiFormat} • ${s.model}`:'Not configured'; $('subtitle').textContent=s.baseUrl?`${s.apiFormat} • ${s.baseUrl}${s.endpoint}`:'Markdown, code blocks, multiple keys, direct API testing'; $('charCount').textContent=`${$('input').value.length} chars`; updateStatus();}
+function initNote(){if(location.protocol==='file:'){const n=document.createElement('div'); n.className='warnbar'; n.innerHTML='<strong>Browser note:</strong> this page is opened from <code>file://</code>. Some APIs will fail from a local file origin, so use a local server if you see Network error.'; $('fileNote').replaceWith(n)}}
+function init(){bind(); initNote(); load(); renderKeys(); renderMessages(); updateUI(); updateCurl(); autoResize(); $('input').focus(); if(state.keys.length===0) updateStatus('warn','Add your first API key'); else updateStatus('ok','Loaded')}
+init();
+</script>
+</body>
+</html>
